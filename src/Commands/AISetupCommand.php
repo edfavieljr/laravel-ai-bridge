@@ -1,6 +1,8 @@
 <?php
 
-namespace YourVendor\LaravelAIBridge\Commands;
+declare(strict_types=1);
+
+namespace Edfavieljr\LaravelAIBridge\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -60,7 +62,7 @@ class AISetupCommand extends Command
 
         $this->info('AI integration set up successfully!');
         $this->info('Remember to publish the configuration with:');
-        $this->line('php artisan vendor:publish --provider="YourVendor\\LaravelAIBridge\\AIBridgeServiceProvider" --tag="ai-config"');
+        $this->line('php artisan vendor:publish --provider="Edfavieljr\\LaravelAIBridge\\AIBridgeServiceProvider" --tag="ai-config"');
 
         return 0;
     }
@@ -162,7 +164,7 @@ class AISetupCommand extends Command
         
         $model = $this->option('model') ?: $this->choice(
             'Which default model would you like to use?',
-            ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'],
+            ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o3-mini'],
             0
         );
         
@@ -191,7 +193,7 @@ class AISetupCommand extends Command
     {
         $model = $this->option('model') ?: $this->choice(
             'Which default Claude model would you like to use?',
-            ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+            ['claude-sonnet-4-20250514', 'claude-haiku-4-20250414', 'claude-opus-4-20250514'],
             0
         );
         
@@ -239,7 +241,7 @@ class AISetupCommand extends Command
         
         $model = $this->option('model') ?: $this->choice(
             'Which default Gemini model would you like to use?',
-            ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'],
+            ['gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-2.5-flash'],
             0
         );
         

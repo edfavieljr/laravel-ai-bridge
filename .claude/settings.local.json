@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(composer install:*)",
+      "Bash(./vendor/bin/phpunit --testdox)",
+      "Bash(head -5 /c/Users/EF/Documents/laravel-ai-bridge/src/**/*.php)",
+      "Bash(find /c/Users/EF/Documents/laravel-ai-bridge/src -name \"*.php\" -type f -exec wc -l {} +)",
+      "Bash(./vendor/bin/phpunit --no-configuration --bootstrap vendor/autoload.php tests/Unit/Exceptions/AIExceptionTest.php)",
+      "Bash(./vendor/bin/phpunit)",
+      "Bash(composer require:*)",
+      "Bash(./vendor/bin/phpstan analyse:*)",
+      "Bash(grep -n \"strict_types\" /c/Users/EF/Documents/laravel-ai-bridge/src/**/*.php)",
+      "Bash(find /c/Users/EF/Documents/laravel-ai-bridge/src -name \"*.php\" -exec grep -L \"strict_types\" {} \\\\;)",
+      "Bash(find /c/Users/EF/Documents/laravel-ai-bridge/tests -name \"*.php\" -exec grep -L \"strict_types\" {} \\\\;)",
+      "Bash(grep -rn 'eval\\\\|exec\\\\|shell_exec\\\\|passthru\\\\|system\\\\|$_REQUEST\\\\|$_GET\\\\|$_POST\\\\|$_SERVER\\\\['\\\\''' /c/Users/EF/Documents/laravel-ai-bridge/src)",
+      "Bash(./vendor/bin/phpunit --filter test_ai_extract_entities)",
+      "WebSearch",
+      "Bash(ls \"c:\\\\Users\\\\EF\\\\Documents\\\\laravel-ai-bridge/\"*.md)",
+      "Bash(ls -la \"c:\\\\Users\\\\EF\\\\Documents\\\\laravel-ai-bridge/\"*.md \"c:\\\\Users\\\\EF\\\\Documents\\\\laravel-ai-bridge/\"*.example \"c:\\\\Users\\\\EF\\\\Documents\\\\laravel-ai-bridge/\".env*)",
+      "Bash(./vendor/bin/phpunit --testsuite Integration --testdox)",
+      "Bash(ls -1 *.md .env.example .gitignore)",
+      "Read(//c/Users/EF/Documents/laravel-ai-bridge/**)",
+      "Bash(composer test:*)",
+      "Bash(composer analyse:*)",
+      "Bash(ls -1 src/Services/*.php src/Enums/*.php src/Support/*.php src/Testing/*.php)"
+    ]
+  }
+}

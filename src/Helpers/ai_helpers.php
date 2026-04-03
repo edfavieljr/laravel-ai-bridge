@@ -1,19 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 use Edfavieljr\LaravelAIBridge\Facades\AI;
 
 if (! function_exists('ai')) {
     /**
-     * Get the AI service instance or generate text with the AI service.
+     * Get the AI service instance or generate text.
      *
-     * @param string|null $prompt The text prompt
-     * @param array $options Additional options
-     * @return mixed
+     * @deprecated Use AI facade directly: AI::generateText(). Will be removed in v2.0.
      */
     function ai(?string $prompt = null, array $options = [])
     {
         if (is_null($prompt)) {
-            return app('Edfavieljr\LaravelAIBridge\Services\AIService');
+            return app(\Edfavieljr\LaravelAIBridge\Services\AIService::class);
         }
 
         return AI::generateText($prompt, $options);
@@ -22,11 +22,7 @@ if (! function_exists('ai')) {
 
 if (! function_exists('ai_embed')) {
     /**
-     * Generate embeddings for the given text.
-     *
-     * @param string|array $input
-     * @param array $options
-     * @return array
+     * @deprecated Use AI::generateEmbeddings(). Will be removed in v2.0.
      */
     function ai_embed($input, array $options = [])
     {
@@ -36,11 +32,7 @@ if (! function_exists('ai_embed')) {
 
 if (! function_exists('ai_sentiment')) {
     /**
-     * Analyze sentiment of the given text.
-     *
-     * @param string $text
-     * @param array $options
-     * @return array
+     * @deprecated Use AI::analyzeSentiment(). Will be removed in v2.0.
      */
     function ai_sentiment(string $text, array $options = [])
     {
@@ -50,12 +42,7 @@ if (! function_exists('ai_sentiment')) {
 
 if (! function_exists('ai_classify')) {
     /**
-     * Classify the given text into categories.
-     *
-     * @param string $text
-     * @param array $categories
-     * @param array $options
-     * @return array
+     * @deprecated Use AI::classifyText(). Will be removed in v2.0.
      */
     function ai_classify(string $text, array $categories, array $options = [])
     {
@@ -65,11 +52,7 @@ if (! function_exists('ai_classify')) {
 
 if (! function_exists('ai_image')) {
     /**
-     * Generate an image from the given prompt.
-     *
-     * @param string $prompt
-     * @param array $options
-     * @return string
+     * @deprecated Use AI::generateImage(). Will be removed in v2.0.
      */
     function ai_image(string $prompt, array $options = [])
     {
@@ -79,11 +62,7 @@ if (! function_exists('ai_image')) {
 
 if (! function_exists('ai_entities')) {
     /**
-     * Extract entities from the given text.
-     *
-     * @param string $text
-     * @param array $options
-     * @return array
+     * @deprecated Use AI::extractEntities(). Will be removed in v2.0.
      */
     function ai_entities(string $text, array $options = [])
     {
@@ -93,10 +72,7 @@ if (! function_exists('ai_entities')) {
 
 if (! function_exists('ai_provider')) {
     /**
-     * Get an AI service for a specific provider.
-     *
-     * @param string $provider
-     * @return mixed
+     * @deprecated Use AI::provider(). Will be removed in v2.0.
      */
     function ai_provider(string $provider)
     {
@@ -106,10 +82,7 @@ if (! function_exists('ai_provider')) {
 
 if (! function_exists('ai_model')) {
     /**
-     * Set the model to use for AI operations.
-     *
-     * @param string $model
-     * @return mixed
+     * @deprecated Use AI::model(). Will be removed in v2.0.
      */
     function ai_model(string $model)
     {

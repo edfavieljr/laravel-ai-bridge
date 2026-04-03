@@ -1,292 +1,326 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Edfavieljr\LaravelAIBridge\Services;
 
 use Exception;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Edfavieljr\LaravelAIBridge\Contracts\AIServiceInterface;
+use Edfavieljr\LaravelAIBridge\Enums\Provider;
 use Edfavieljr\LaravelAIBridge\Exceptions\AIException;
+use Edfavieljr\LaravelAIBridge\Services\Concerns\HasAIInstrumentation;
 
 class OpenAIService implements AIServiceInterface
 {
-    /**
-     * The OpenAI API key.
-     *
-     * @var string
-     */
+    use HasAIInstrumentation;
+
     protected string $apiKey;
-    
-    /**
-     * The OpenAI organization ID.
-     *
-     * @var string|null
-     */
     protected ?string $organization;
-    
-    /**
-     * Additional options.
-     *
-     * @var array
-     */
     protected array $options;
-    
-    /**
-     * The HTTP client instance.
-     *
-     * @var \Illuminate\Http\Client\PendingRequest
-     */
     protected $client;
-    
-    /**
-     * Create a new OpenAI service instance.
-     *
-     * @param string $apiKey
-     * @param string|null $organization
-     * @param array $options
-     */
+    protected ?string $currentModel = null;
+
     public function __construct(string $apiKey, ?string $organization = null, array $options = [])
     {
         $this->apiKey = $apiKey;
         $this->organization = $organization;
         $this->options = $options;
-        
+
         $this->initializeHttpClient();
     }
-    
-    /**
-     * Initialize the HTTP client.
-     *
-     * @return void
-     */
+
+    protected function providerName(): Provider
+    {
+        return Provider::OpenAI;
+    }
+
+    public function model(string $model): self
+    {
+        $this->currentModel = $model;
+        return $this;
+    }
+
     protected function initializeHttpClient(): void
     {
         $this->client = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->apiKey,
             'Content-Type' => 'application/json',
         ]);
-        
+
         if ($this->organization) {
             $this->client = $this->client->withHeaders([
                 'OpenAI-Organization' => $this->organization,
             ]);
         }
-        
-        $timeout = $this->options['timeout'] ?? 30;
-        $this->client = $this->client->timeout($timeout);
+
+        $this->client = $this->client->timeout($this->options['timeout'] ?? 30);
     }
-    
-    /**
-     * Generate text using completion/chat models.
-     *
-     * @param string $prompt The text prompt
-     * @param array $options Additional options (model, temperature, etc)
-     * @return string The generated text
-     * @throws \Edfavieljr\LaravelAIBridge\Exceptions\AIException
-     */
+
     public function generateText(string $prompt, array $options = []): string
     {
+        $startTime = microtime(true);
         $cacheKey = $this->getCacheKey('generateText', $prompt, $options);
-        
-        if ($this->shouldUseCache() && Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
+
+        $cached = $this->getCachedResult($cacheKey);
+        if ($cached !== null) {
+            return $cached;
         }
-        
-        $model = $options['model'] ?? $this->options['default_model'] ?? 'gpt-4';
-        $temperature = $options['temperature'] ?? 0.7;
-        $maxTokens = $options['max_tokens'] ?? 500;
-        
+
+        $model = $this->currentModel ?? $options['model'] ?? $this->options['default_model'] ?? 'gpt-4o';
         $payload = [
             'model' => $model,
             'messages' => [
-                ['role' => 'user', 'content' => $prompt]
+                ['role' => 'user', 'content' => $prompt],
             ],
-            'temperature' => $temperature,
-            'max_tokens' => $maxTokens,
+            'temperature' => $options['temperature'] ?? 0.7,
+            'max_tokens' => $options['max_tokens'] ?? 500,
         ];
-        
+
         try {
             $baseUri = $this->options['base_uri'] ?? 'https://api.openai.com/v1';
+
+            $this->logRequest('chat/completions', $model, $prompt);
+
             $response = $this->client->post("{$baseUri}/chat/completions", $payload);
-            
-            if ($this->shouldLog()) {
-                Log::channel(config('ai.logging.channel', 'stack'))
-                    ->info('OpenAI API Request', [
-                        'endpoint' => 'chat/completions',
-                        'prompt' => $prompt,
-                        'options' => $options,
-                    ]);
-            }
-            
+
             if ($response->failed()) {
                 throw new AIException(
                     'OpenAI API error: ' . ($response->json('error.message') ?? $response->reason()),
-                    $response->status()
+                    $response->status(),
+                    null,
+                    'api_error',
+                    Provider::OpenAI->value,
+                    $model
                 );
             }
-            
+
             $result = $response->json();
             $generatedText = $result['choices'][0]['message']['content'] ?? '';
-            
-            if ($this->shouldUseCache()) {
-                Cache::put($cacheKey, $generatedText, now()->addMinutes(config('ai.cache.ttl', 60)));
-            }
-            
-            if ($this->shouldStoreInDatabase()) {
-                // Implementar almacenamiento en base de datos
-            }
-            
+            $executionTime = microtime(true) - $startTime;
+
+            $this->cacheResult($cacheKey, $generatedText);
+
+            $this->storeSuccess($model, $prompt, $generatedText, [
+                'prompt_tokens' => $result['usage']['prompt_tokens'] ?? null,
+                'completion_tokens' => $result['usage']['completion_tokens'] ?? null,
+                'total_tokens' => $result['usage']['total_tokens'] ?? null,
+                'request_data' => $payload,
+                'response_data' => $result,
+                'execution_time' => $executionTime,
+            ]);
+
             return $generatedText;
+        } catch (AIException $e) {
+            throw $e;
         } catch (Exception $e) {
-            if ($this->shouldLog()) {
-                Log::channel(config('ai.logging.channel', 'stack'))
-                    ->error('OpenAI API Error', [
-                        'message' => $e->getMessage(),
-                        'prompt' => $prompt,
-                    ]);
-            }
-            
-            throw new AIException('OpenAI API error: ' . $e->getMessage(), 0, $e);
+            $executionTime = microtime(true) - $startTime;
+
+            $this->logError($e->getMessage(), $prompt, $model);
+
+            $this->storeError($model, $prompt, $e->getMessage(), [
+                'request_data' => $payload,
+                'execution_time' => $executionTime,
+            ]);
+
+            throw new AIException(
+                'OpenAI API error: ' . $e->getMessage(),
+                0,
+                $e,
+                'api_error',
+                Provider::OpenAI->value,
+                $model
+            );
         }
     }
-    
-    /**
-     * Generate text embeddings for semantic search and similarity.
-     *
-     * @param string|array $input The text to embed
-     * @param array $options Additional options (model, etc)
-     * @return array The embedding vectors
-     * @throws \Edfavieljr\LaravelAIBridge\Exceptions\AIException
-     */
-    public function generateEmbeddings($input, array $options = []): array
+
+    public function generateEmbeddings(string|array $input, array $options = []): array
     {
-        $model = $options['model'] ?? $this->options['default_embedding_model'] ?? 'text-embedding-3-large';
-        
-        $input = is_array($input) ? $input : [$input];
-        
+        $model = $this->currentModel ?? $options['model'] ?? $this->options['default_embedding_model'] ?? 'text-embedding-3-large';
+        $inputArray = is_array($input) ? $input : [$input];
+
+        $cacheKey = $this->getCacheKey('generateEmbeddings', $input, $options);
+        $cached = $this->getCachedResult($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         try {
             $baseUri = $this->options['base_uri'] ?? 'https://api.openai.com/v1';
             $response = $this->client->post("{$baseUri}/embeddings", [
                 'model' => $model,
-                'input' => $input,
+                'input' => $inputArray,
             ]);
-            
+
             if ($response->failed()) {
                 throw new AIException(
                     'OpenAI API error: ' . ($response->json('error.message') ?? $response->reason()),
-                    $response->status()
+                    $response->status(),
+                    null,
+                    'api_error',
+                    Provider::OpenAI->value,
+                    $model
                 );
             }
-            
-            $result = $response->json();
-            return array_map(function ($item) {
-                return $item['embedding'];
-            }, $result['data']);
+
+            $result = array_map(fn ($item) => $item['embedding'], $response->json('data'));
+
+            $this->cacheResult($cacheKey, $result);
+
+            return $result;
+        } catch (AIException $e) {
+            throw $e;
         } catch (Exception $e) {
-            throw new AIException('OpenAI embeddings error: ' . $e->getMessage(), 0, $e);
+            throw new AIException(
+                'OpenAI embeddings error: ' . $e->getMessage(),
+                0,
+                $e,
+                'api_error',
+                Provider::OpenAI->value,
+                $model
+            );
         }
     }
-    
-    /**
-     * Analyze sentiment of the provided text.
-     *
-     * @param string $text The text to analyze
-     * @param array $options Additional options
-     * @return array The sentiment analysis results
-     */
+
+    public function generateChat(array $messages, array $options = []): string
+    {
+        $model = $this->currentModel ?? $options['model'] ?? $this->options['default_model'] ?? 'gpt-4o';
+
+        $payload = [
+            'model' => $model,
+            'messages' => $messages,
+            'temperature' => $options['temperature'] ?? 0.7,
+            'max_tokens' => $options['max_tokens'] ?? 500,
+        ];
+
+        if (isset($options['system'])) {
+            array_unshift($payload['messages'], ['role' => 'system', 'content' => $options['system']]);
+        }
+
+        try {
+            $baseUri = $this->options['base_uri'] ?? 'https://api.openai.com/v1';
+
+            $this->logRequest('chat/completions', $model, '[chat]');
+
+            $response = $this->client->post("{$baseUri}/chat/completions", $payload);
+
+            if ($response->failed()) {
+                throw new AIException(
+                    'OpenAI API error: ' . ($response->json('error.message') ?? $response->reason()),
+                    $response->status(),
+                    null,
+                    'api_error',
+                    Provider::OpenAI->value,
+                    $model
+                );
+            }
+
+            return $response->json('choices.0.message.content') ?? '';
+        } catch (AIException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new AIException(
+                'OpenAI API error: ' . $e->getMessage(),
+                0,
+                $e,
+                'api_error',
+                Provider::OpenAI->value,
+                $model
+            );
+        }
+    }
+
+    public function streamText(string $prompt, array $options = []): \Generator
+    {
+        $model = $this->currentModel ?? $options['model'] ?? $this->options['default_model'] ?? 'gpt-4o';
+        $baseUri = $this->options['base_uri'] ?? 'https://api.openai.com/v1';
+
+        $payload = [
+            'model' => $model,
+            'messages' => [
+                ['role' => 'user', 'content' => $prompt],
+            ],
+            'temperature' => $options['temperature'] ?? 0.7,
+            'max_tokens' => $options['max_tokens'] ?? 500,
+            'stream' => true,
+        ];
+
+        $this->logRequest('chat/completions (stream)', $model, $prompt);
+
+        $response = $this->client
+            ->withOptions(['stream' => true])
+            ->post("{$baseUri}/chat/completions", $payload);
+
+        if ($response->failed()) {
+            throw new AIException(
+                'OpenAI API error: ' . ($response->json('error.message') ?? $response->reason()),
+                $response->status(),
+                null,
+                'api_error',
+                Provider::OpenAI->value,
+                $model
+            );
+        }
+
+        $body = $response->toPsrResponse()->getBody();
+        $buffer = '';
+
+        while (!$body->eof()) {
+            $buffer .= $body->read(1024);
+            $lines = explode("\n", $buffer);
+            $buffer = array_pop($lines);
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '' || $line === 'data: [DONE]') {
+                    continue;
+                }
+                if (!str_starts_with($line, 'data: ')) {
+                    continue;
+                }
+
+                $json = json_decode(substr($line, 6), true);
+                $chunk = $json['choices'][0]['delta']['content'] ?? '';
+
+                if ($chunk !== '') {
+                    yield $chunk;
+                }
+            }
+        }
+    }
+
     public function analyzeSentiment(string $text, array $options = []): array
     {
         $prompt = "Analyze the sentiment of the following text and provide a score from -1 (very negative) to 1 (very positive), and categorize as 'positive', 'negative', or 'neutral'. Return JSON format with keys 'score' and 'category'. Text: \"{$text}\"";
-        
+
         $response = $this->generateText($prompt, $options);
-        
-        try {
-            // Attempt to parse JSON response
-            $json = json_decode($response, true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                // If not valid JSON, try to extract information with regex
-                preg_match('/score"?\s*:\s*(-?\d+\.?\d*)/', $response, $scoreMatches);
-                preg_match('/category"?\s*:\s*"(positive|negative|neutral)"/', $response, $categoryMatches);
-                
-                return [
-                    'score' => isset($scoreMatches[1]) ? (float) $scoreMatches[1] : 0,
-                    'category' => $categoryMatches[1] ?? 'neutral',
-                    'raw_response' => $response,
-                ];
-            }
-            
-            return $json;
-        } catch (Exception $e) {
-            return [
-                'score' => 0,
-                'category' => 'neutral',
-                'error' => $e->getMessage(),
-                'raw_response' => $response,
-            ];
-        }
+
+        return $this->parseJsonResponse($response, [
+            'score' => 0,
+            'category' => 'neutral',
+        ]);
     }
-    
-    /**
-     * Classify text into categories.
-     *
-     * @param string $text The text to classify
-     * @param array $categories The possible categories
-     * @param array $options Additional options
-     * @return array Classification results with probabilities
-     */
+
     public function classifyText(string $text, array $categories, array $options = []): array
     {
         $categoriesList = implode(', ', $categories);
         $prompt = "Classify the following text into one of these categories: {$categoriesList}. Return JSON format with keys 'category' and 'confidence' (a number between 0 and 1). Text: \"{$text}\"";
-        
+
         $response = $this->generateText($prompt, $options);
-        
-        try {
-            $result = json_decode($response, true);
-            
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                // Handle non-JSON response
-                preg_match('/category"?\s*:\s*"([^"]+)"/', $response, $categoryMatches);
-                preg_match('/confidence"?\s*:\s*(\d+\.?\d*)/', $response, $confidenceMatches);
-                
-                $category = $categoryMatches[1] ?? $categories[0];
-                $confidence = isset($confidenceMatches[1]) ? (float) $confidenceMatches[1] : 0.5;
-                
-                return [
-                    'category' => $category,
-                    'confidence' => $confidence,
-                    'raw_response' => $response,
-                ];
-            }
-            
-            return $result;
-        } catch (Exception $e) {
-            return [
-                'category' => $categories[0],
-                'confidence' => 0,
-                'error' => $e->getMessage(),
-                'raw_response' => $response,
-            ];
-        }
+
+        return $this->parseJsonResponse($response, [
+            'category' => $categories[0] ?? '',
+            'confidence' => 0,
+        ]);
     }
-    
-    /**
-     * Generate an image from a text prompt.
-     *
-     * @param string $prompt The image description
-     * @param array $options Additional options (size, quality, etc)
-     * @return string The URL or base64 of the generated image
-     * @throws \Edfavieljr\LaravelAIBridge\Exceptions\AIException
-     */
+
     public function generateImage(string $prompt, array $options = []): string
     {
-        $model = $options['model'] ?? $this->options['default_image_model'] ?? 'dall-e-3';
+        $model = $this->currentModel ?? $options['model'] ?? $this->options['default_image_model'] ?? 'dall-e-3';
         $size = $options['size'] ?? '1024x1024';
         $quality = $options['quality'] ?? 'standard';
         $responseFormat = $options['response_format'] ?? 'url';
-        
+
         try {
             $baseUri = $this->options['base_uri'] ?? 'https://api.openai.com/v1';
             $response = $this->client->post("{$baseUri}/images/generations", [
@@ -297,94 +331,45 @@ class OpenAIService implements AIServiceInterface
                 'quality' => $quality,
                 'response_format' => $responseFormat,
             ]);
-            
+
             if ($response->failed()) {
                 throw new AIException(
                     'OpenAI API error: ' . ($response->json('error.message') ?? $response->reason()),
-                    $response->status()
+                    $response->status(),
+                    null,
+                    'api_error',
+                    Provider::OpenAI->value,
+                    $model
                 );
             }
-            
-            $result = $response->json();
-            return $result['data'][0][$responseFormat];
+
+            return $response->json("data.0.{$responseFormat}");
+        } catch (AIException $e) {
+            throw $e;
         } catch (Exception $e) {
-            throw new AIException('OpenAI image generation error: ' . $e->getMessage(), 0, $e);
+            throw new AIException(
+                'OpenAI image generation error: ' . $e->getMessage(),
+                0,
+                $e,
+                'api_error',
+                Provider::OpenAI->value,
+                $model
+            );
         }
     }
-    
-    /**
-     * Extract entities from text (people, organizations, locations, etc).
-     *
-     * @param string $text The text to analyze
-     * @param array $options Additional options
-     * @return array The extracted entities
-     */
+
     public function extractEntities(string $text, array $options = []): array
     {
         $prompt = "Extract all named entities (people, organizations, locations, dates, etc.) from the following text. For each entity, identify its type. Return as a JSON array of objects with 'entity', 'type', and 'count' properties. Text: \"{$text}\"";
-        
+
         $response = $this->generateText($prompt, $options);
-        
-        try {
-            return json_decode($response, true) ?: [];
-        } catch (Exception $e) {
-            return [];
-        }
+        $result = json_decode($response, true);
+
+        return is_array($result) ? $result : [];
     }
-    
-    /**
-     * Get provider-specific client to access advanced features.
-     *
-     * @return mixed The provider client
-     */
-    public function getClient()
+
+    public function getClient(): mixed
     {
         return $this->client;
-    }
-    
-    /**
-     * Get a cache key for the given method and parameters.
-     *
-     * @param string $method
-     * @param mixed $input
-     * @param array $options
-     * @return string
-     */
-    protected function getCacheKey(string $method, $input, array $options): string
-    {
-        $inputHash = is_string($input) ? md5($input) : md5(json_encode($input));
-        $optionsHash = md5(json_encode($options));
-        
-        return "ai:{$method}:{$inputHash}:{$optionsHash}";
-    }
-    
-    /**
-     * Determine if caching should be used.
-     *
-     * @return bool
-     */
-    protected function shouldUseCache(): bool
-    {
-        return config('ai.cache.enabled', true);
-    }
-    
-    /**
-     * Determine if logging should be used.
-     *
-     * @return bool
-     */
-    protected function shouldLog(): bool
-    {
-        return config('ai.logging.enabled', true);
-    }
-    
-    /**
-     * Determine if database storage should be used.
-     *
-     * @return bool
-     */
-    protected function shouldStoreInDatabase(): bool
-    {
-        return config('ai.storage.enabled', false);
     }
 }

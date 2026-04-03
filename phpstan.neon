@@ -1,0 +1,21 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    excludePaths:
+        - src/Commands/AISetupCommand.php
+    ignoreErrors:
+        - identifier: trait.unused
+        - identifier: new.static
+        -
+            message: '#PHPDoc type array of property.*is not covariant#'
+            identifier: property.phpDocType
+        -
+            message: '#Call to an undefined static method.*AICompletion::(where|query)#'
+            identifier: staticMethod.notFound
+        -
+            message: '#Access to an undefined property.*AICompletion::\$#'
+            identifier: property.notFound
+        -
+            message: '#Variable \$payload on left side of \?\? always exists#'
+            identifier: nullCoalesce.variable

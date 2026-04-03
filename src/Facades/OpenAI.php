@@ -1,21 +1,24 @@
 <?php
 
-namespace YourVendor\LaravelAIBridge\Facades;
+declare(strict_types=1);
+
+namespace Edfavieljr\LaravelAIBridge\Facades;
 
 use Illuminate\Support\Facades\Facade;
-use YourVendor\LaravelAIBridge\Services\OpenAIService;
+use Edfavieljr\LaravelAIBridge\Services\OpenAIService;
 
 /**
  * @method static string generateText(string $prompt, array $options = [])
- * @method static array generateEmbeddings($input, array $options = [])
+ * @method static array generateEmbeddings(string|array $input, array $options = [])
  * @method static array analyzeSentiment(string $text, array $options = [])
  * @method static array classifyText(string $text, array $categories, array $options = [])
  * @method static string generateImage(string $prompt, array $options = [])
  * @method static array extractEntities(string $text, array $options = [])
  * @method static mixed getClient()
- * @method static mixed model(string $model)
- * 
- * @see \YourVendor\LaravelAIBridge\Services\OpenAIService
+ *
+ * @see \Edfavieljr\LaravelAIBridge\Services\OpenAIService
+ *
+ * @deprecated Use AI::provider('openai') instead. Will be removed in v2.0.
  */
 class OpenAI extends Facade
 {

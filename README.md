@@ -1,275 +1,245 @@
 # Laravel AI Bridge
 
-A powerful, elegant library for integrating multiple AI providers into Laravel applications through a unified API.
+A unified, testable API for integrating multiple AI providers into Laravel applications.
 
-## Introduction
+Supports **OpenAI**, **Anthropic Claude**, **Google Gemini**, and **HuggingFace** — with streaming, conversations, structured output, automatic fallback, caching, and built-in observability.
 
-Laravel AI Bridge provides seamless integration with leading AI providers (OpenAI, Anthropic Claude, Google Gemini, and Hugging Face) through a consistent, Laravel-style interface. The library abstracts away the complexities of working with different AI APIs, allowing developers to focus on building features rather than managing API implementations.
+## Why This Package?
 
-## Features
-
-- **Unified API** for multiple AI providers
-- **Provider-specific facades** for direct access to specialized features
-- **Intelligent caching** to reduce API costs
-- **Automatic fallback** between providers for increased reliability
-- **Laravel-style syntax** with facades, helpers, and fluent interfaces
-- **Eloquent integration** with model traits for AI capabilities
-- **Comprehensive logging** and error handling
+- **One API, four providers** — switch providers with one line, not a rewrite
+- **Laravel 10, 11, and 12** — the official Laravel AI SDK requires 12+. This doesn't.
+- **`AI::fake()` built in** — test your AI-powered code without HTTP mocking
+- **Event-driven observability** — every AI call fires events you can listen to for logging, metrics, or alerting
+- **Database logging** — track tokens, costs, and usage out of the box
 
 ## Installation
-
-### Requirements
-
-- PHP 8.1 or higher
-- Laravel 9.0 or higher
-- Composer
-
-### Via Composer
 
 ```bash
 composer require edfavieljr/laravel-ai-bridge
 ```
 
-### Publish Configuration
-
-After installing the package, publish the configuration file:
+Publish the config:
 
 ```bash
-php artisan vendor:publish --provider="edfavieljr\LaravelAIBridge\AIBridgeServiceProvider" --tag="ai-config"
+php artisan vendor:publish --tag=ai-config
 ```
 
-## Quick Setup
+Add your API key to `.env`:
 
-The quickest way to get started is using the included setup command:
-
-```bash
-php artisan ai:setup
-```
-
-This interactive command will guide you through:
-1. Selecting your preferred AI provider
-2. Configuring your API keys
-3. Setting default models
-4. Updating your `.env` file automatically
-
-## Manual Configuration
-
-### Environment Variables
-
-Add the following variables to your `.env` file:
-
-```
-# Default provider
+```env
 AI_PROVIDER=openai
-
-# OpenAI Configuration
-OPENAI_API_KEY=your-openai-key
-OPENAI_ORGANIZATION=your-organization-id  # Optional
-OPENAI_DEFAULT_MODEL=gpt-4
-
-# Anthropic Configuration
-ANTHROPIC_API_KEY=your-anthropic-key
-ANTHROPIC_DEFAULT_MODEL=claude-3-opus-20240229
-
-# Google Gemini Configuration
-GEMINI_API_KEY=your-gemini-key
-GEMINI_PROJECT_ID=your-gcp-project-id  # Optional, for Vertex AI
-GEMINI_DEFAULT_MODEL=gemini-1.5-pro
-
-# Hugging Face Configuration
-HUGGINGFACE_API_KEY=your-huggingface-key
-HUGGINGFACE_DEFAULT_MODEL=gpt2
+OPENAI_API_KEY=your-key-here
 ```
 
-### Configuration Options
+That's it. You're ready.
 
-The `config/ai.php` file contains detailed settings for:
-
-- Default provider
-- Caching behavior
-- Provider fallback options
-- Rate limiting
-- Logging
-- Database storage for API calls
-- Provider-specific configuration
-
-## Basic Usage
-
-### Using the Main Facade
+## Quick Start
 
 ```php
-use edfavieljr\LaravelAIBridge\Facades\AI;
+use Edfavieljr\LaravelAIBridge\Facades\AI;
 
-// Generate text with default provider
+// Generate text
 $response = AI::generateText('Explain quantum computing in simple terms');
 
-// Analyze sentiment
-$sentiment = AI::analyzeSentiment('I absolutely love this product!');
+// Switch provider on the fly
+$response = AI::provider('anthropic')->generateText('Write a haiku about code');
 
-// Generate embeddings for semantic search
-$embeddings = AI::generateEmbeddings('Text to convert to vector representation');
-
-// Classify text into categories
-$classification = AI::classifyText(
-    'The battery drains too quickly on this phone',
-    ['hardware_issue', 'software_issue', 'battery_problem', 'user_experience']
-);
-
-// Extract entities
-$entities = AI::extractEntities('Apple announced their new iPhone yesterday in California');
+// Switch model
+$response = AI::provider('openai')->model('gpt-4o-mini')->generateText('Summarize this');
 ```
 
-### Using Global Helper Functions
+## Streaming
+
+Real-time token streaming with PHP generators. Works with OpenAI, Anthropic, and Gemini.
 
 ```php
-// Generate text
-$explanation = ai('Explain how blockchain works in simple terms');
-
-// Analyze sentiment
-$sentiment = ai_sentiment('The customer service was terrible and I want a refund');
-
-// Generate embeddings
-$embeddings = ai_embed('Vector representation for semantic search');
-
-// Classify text
-$category = ai_classify(
-    'The screen keeps freezing after the update',
-    ['hardware_issue', 'software_bug', 'compatibility_problem', 'user_error']
-);
-
-// Extract entities
-$entities = ai_entities('Microsoft CEO Satya Nadella announced a new partnership with OpenAI');
-```
-
-## Working with Specific Providers
-
-### OpenAI
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\OpenAI;
-
-// Direct access via provider-specific facade
-$completion = OpenAI::generateText('Write a poem about autumn');
-
-// Generate an image
-$imageUrl = OpenAI::generateImage('A futuristic city with flying cars');
-
-// Using the main facade with provider specification
-$completion = AI::provider('openai')
-    ->model('gpt-4')
-    ->generateText('Explain the theory of relativity');
-```
-
-### Anthropic (Claude)
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\Anthropic;
-
-// Generate text with Claude
-$completion = Anthropic::generateText('Write a summary of the last climate report');
-
-// Using the main facade with provider specification
-$completion = AI::provider('anthropic')
-    ->model('claude-3-opus-20240229')
-    ->generateText('Compare and contrast quantum computing and classical computing');
-```
-
-### Google Gemini
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\Gemini;
-
-// Generate text with Gemini
-$completion = Gemini::generateText('Create a tutorial for machine learning beginners');
-
-// Using the main facade with provider specification
-$completion = AI::provider('gemini')
-    ->model('gemini-1.5-pro')
-    ->generateText('Explain how neural networks work');
-```
-
-### Hugging Face
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\HuggingFace;
-
-// Generate text with HuggingFace models
-$completion = HuggingFace::model('gpt2')->generateText('Continue this story: Once upon a time');
-
-// Generate embeddings with a specific model
-$embeddings = HuggingFace::model('sentence-transformers/all-mpnet-base-v2')
-    ->generateEmbeddings('Semantic search vector');
-```
-
-## Integrating with Eloquent Models
-
-Add AI capabilities directly to your models:
-
-```php
-use Illuminate\Database\Eloquent\Model;
-use edfavieljr\LaravelAIBridge\Traits\HasAICapabilities;
-
-class Product extends Model
-{
-    use HasAICapabilities;
-    
-    // Your model implementation...
+foreach (AI::streamText('Write a story about a robot') as $chunk) {
+    echo $chunk; // Arrives in real time
+    ob_flush();
 }
 ```
 
-Then use the AI capabilities on your model instances:
+## Conversations
+
+Multi-turn chat with automatic history management.
 
 ```php
-$product = Product::find(1);
+$chat = AI::conversation()
+    ->system('You are a helpful math tutor.');
 
-// Generate a marketing description
-$marketingText = $product->completeText(
-    'description',
-    'Rewrite this product description to be more compelling: %s'
-);
+$chat->send('What is calculus?');
+// "Calculus is a branch of mathematics..."
 
-// Analyze customer review sentiment
-$sentiment = $product->analyzeSentimentOf('customer_review');
+$chat->reply('Give me an example');
+// "Sure! Consider the function f(x) = x²..."
 
-// Categorize product based on description
-$category = $product->classifyAttribute(
-    'description',
-    ['electronics', 'clothing', 'home', 'sports']
-);
-
-// Generate an image for the product
-$imageUrl = $product->generateImageFrom('description');
-
-// Summarize product description
-$summary = $product->summarizeAttribute('description', 100);
-
-// Translate product description
-$translated = $product->translateAttribute('description', 'Spanish');
+// Full history available
+$chat->messages(); // [['role' => 'user', ...], ['role' => 'assistant', ...], ...]
 ```
 
-## Advanced Features
+## Structured Output
 
-### Automatic Fallback Between Providers
-
-Configure fallback behavior in `config/ai.php`:
+Force JSON responses with automatic schema validation.
 
 ```php
+$result = AI::structured('Extract info from: John Doe, 30 years old, lives in NYC', [
+    'name' => 'string',
+    'age'  => 'integer',
+    'city' => 'string',
+])->generate();
+
+// ['name' => 'John Doe', 'age' => 30, 'city' => 'NYC']
+```
+
+Throws `AIException` if the response doesn't match your schema.
+
+## All Methods
+
+```php
+// Text generation
+AI::generateText('prompt', ['model' => 'gpt-4o', 'temperature' => 0.7]);
+
+// Streaming
+AI::streamText('prompt');
+
+// Embeddings
+AI::generateEmbeddings('text to embed');
+
+// Sentiment analysis
+AI::analyzeSentiment('I love this product!');
+// ['score' => 0.9, 'category' => 'positive']
+
+// Text classification
+AI::classifyText('The battery drains fast', ['hardware', 'software', 'battery']);
+// ['category' => 'battery', 'confidence' => 0.92]
+
+// Entity extraction
+AI::extractEntities('Apple CEO Tim Cook announced...');
+// [['entity' => 'Apple', 'type' => 'ORG'], ['entity' => 'Tim Cook', 'type' => 'PERSON']]
+
+// Image generation (OpenAI, HuggingFace)
+AI::generateImage('A sunset over mountains');
+
+// Conversations
+AI::conversation()->system('...')->send('...');
+
+// Structured output
+AI::structured('prompt', ['key' => 'type'])->generate();
+```
+
+## Testing with `AI::fake()`
+
+No HTTP mocking needed. No API keys required in tests.
+
+```php
+use Edfavieljr\LaravelAIBridge\Facades\AI;
+
+// Simple fake — returns default empty values
+AI::fake();
+
+// Fake with configured responses
+AI::fake([
+    'generateText' => 'Hello world!',
+    'analyzeSentiment' => ['score' => 0.9, 'category' => 'positive'],
+]);
+
+// Use closures for dynamic responses
+AI::fake([
+    'generateText' => fn (string $prompt) => "Echo: {$prompt}",
+]);
+
+// Assertions
+AI::assertCalled('generateText');
+AI::assertCalled('generateText', 2); // Called exactly 2 times
+AI::assertCalledWith('generateText', fn ($prompt) => str_contains($prompt, 'hello'));
+AI::assertNotCalled('generateImage');
+AI::assertNothingCalled();
+
+// Streaming fake
+AI::fake([
+    'streamText' => ['chunk 1', 'chunk 2', 'chunk 3'],
+]);
+
+// Conversations and structured output work with fakes too
+AI::fake(['generateText' => '{"name": "John"}']);
+$result = AI::structured('extract', ['name' => 'string'])->generate();
+```
+
+## Eloquent Integration
+
+Add AI capabilities to any model:
+
+```php
+use Edfavieljr\LaravelAIBridge\Traits\HasAICapabilities;
+
+class Article extends Model
+{
+    use HasAICapabilities;
+
+    // Optional: configure default provider/model for this model
+    protected function aiConfig(): array
+    {
+        return [
+            'provider' => 'anthropic',
+            'model' => 'claude-sonnet-4-20250514',
+        ];
+    }
+}
+```
+
+```php
+$article = Article::find(1);
+
+$article->aiSummarize('body', 200);
+$article->aiTranslate('title', 'Spanish');
+$article->aiAnalyzeSentiment('content');
+$article->aiClassify('body', ['tech', 'science', 'politics']);
+$article->aiExtractEntities('body');
+$article->aiGenerateImage('description');
+$article->aiEmbed('body');
+$article->aiGenerateText('body', 'Rewrite this to be more compelling: %s');
+```
+
+## Events
+
+Every AI call dispatches events. Listen to them for custom logging, metrics, or alerting.
+
+```php
+// In a service provider or listener
+use Edfavieljr\LaravelAIBridge\Events\AIRequestCompleted;
+use Edfavieljr\LaravelAIBridge\Events\AIRequestFailed;
+
+Event::listen(AIRequestCompleted::class, function (AIRequestCompleted $event) {
+    // $event->provider  (Provider enum)
+    // $event->model     (string)
+    // $event->prompt    (string)
+    // $event->completion (string)
+    // $event->metadata  (array: tokens, execution_time, etc.)
+});
+
+Event::listen(AIRequestFailed::class, function (AIRequestFailed $event) {
+    // $event->error (string)
+    // Alert your team, track failure rates, etc.
+});
+```
+
+## Configuration
+
+### Fallback
+
+If a provider fails, automatically try the next one:
+
+```php
+// config/ai.php
 'fallback' => [
     'enabled' => true,
     'providers' => ['openai', 'anthropic', 'gemini', 'huggingface'],
 ],
 ```
 
-With fallback enabled, if the primary provider fails, the library automatically tries the next provider:
+### Caching
 
-```php
-// Will try OpenAI first, then fall back to other providers if it fails
-$result = AI::provider('openai')->generateText('Explain quantum physics');
-```
-
-### Intelligent Caching
-
-Configure caching in `config/ai.php`:
+Cache identical requests to reduce costs:
 
 ```php
 'cache' => [
@@ -278,80 +248,88 @@ Configure caching in `config/ai.php`:
 ],
 ```
 
-Identical requests will be cached to reduce API costs:
+### Rate Limiting
 
 ```php
-// First call hits the API
-$result1 = AI::generateText('What is machine learning?');
-
-// Second identical call uses cached result
-$result2 = AI::generateText('What is machine learning?');
+'rate_limiting' => [
+    'enabled' => true,
+    'max_requests_per_minute' => 60,
+],
 ```
 
 ### Database Logging
 
-Enable database storage to track AI usage:
+Track all AI calls with token counts and execution time:
+
+```bash
+php artisan vendor:publish --tag=ai-migrations
+php artisan migrate
+```
 
 ```php
+// config/ai.php
 'storage' => [
     'enabled' => true,
     'purge_after_days' => 30,
 ],
 ```
 
-Then publish and run the migration:
-
-```bash
-php artisan vendor:publish --provider="edfavieljr\LaravelAIBridge\AIBridgeServiceProvider" --tag="ai-migrations"
-php artisan migrate
+```php
+// Purge old records
+php artisan ai:purge
+php artisan ai:purge --days=7
 ```
-
-Query the logs:
 
 ```php
-use edfavieljr\LaravelAIBridge\Models\AICompletion;
+use Edfavieljr\LaravelAIBridge\Models\AICompletion;
 
-// Get all completions
-$completions = AICompletion::all();
-
-// Get completions from a specific provider
-$openaiCompletions = AICompletion::fromProvider('openai')->get();
-
-// Get token usage summary
-$usageSummary = AICompletion::getTokenUsageSummary();
+AICompletion::fromProvider('openai')->get();
+AICompletion::successful()->get();
+AICompletion::failed()->get();
+AICompletion::getTokenUsageSummary();
 ```
 
-## Troubleshooting
+### Provider Configuration
 
-### Common Issues
+```env
+# OpenAI
+OPENAI_API_KEY=sk-...
+OPENAI_DEFAULT_MODEL=gpt-4o
 
-1. **API Key Authentication Failures**
-   - Verify your API keys are correctly set in the `.env` file
-   - Check for whitespace or special characters in your keys
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_DEFAULT_MODEL=claude-sonnet-4-20250514
 
-2. **Rate Limiting**
-   - Configure rate limiting settings in `config/ai.php`
-   - Implement queue-based processing for high-volume applications
+# Google Gemini
+GEMINI_API_KEY=...
+GEMINI_DEFAULT_MODEL=gemini-2.0-flash
 
-3. **Model Availability**
-   - Ensure you have access to the selected models in your provider accounts
-   - Some models require specific permissions or subscriptions
-
-### Debugging
-
-Enable detailed logging:
-
-```php
-'logging' => [
-    'enabled' => true,
-    'channel' => 'ai-logs', // Create this channel in your config/logging.php
-],
+# HuggingFace
+HUGGINGFACE_API_KEY=hf_...
+HUGGINGFACE_DEFAULT_MODEL=gpt2
 ```
+
+## Provider Capabilities
+
+| Feature | OpenAI | Anthropic | Gemini | HuggingFace |
+|---------|--------|-----------|--------|-------------|
+| Text generation | Yes | Yes | Yes | Yes |
+| Streaming | Yes | Yes | Yes | Fallback |
+| Embeddings | Yes | No | Yes | Yes |
+| Image generation | Yes | No | No | Yes |
+| Sentiment analysis | Yes | Yes | Yes | Yes |
+| Classification | Yes | Yes | Yes | Yes |
+| Entity extraction | Yes | Yes | Yes | Yes |
+
+## Requirements
+
+- PHP 8.1+
+- Laravel 10, 11, or 12
 
 ## Contributing
 
-Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-This package is open-sourced software licensed under the [MIT license](LICENSE.md).
+MIT. See [LICENSE.md](LICENSE.md).

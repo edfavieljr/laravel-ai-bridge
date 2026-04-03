@@ -38,7 +38,7 @@ return [
     */
     'fallback' => [
         'enabled' => env('AI_FALLBACK_ENABLED', false),
-        'providers' => ['openai', 'huggingface'],
+        'providers' => ['openai', 'anthropic', 'gemini', 'huggingface'],
     ],
 
     /*
@@ -98,7 +98,7 @@ return [
             'options' => [
                 'timeout' => env('OPENAI_TIMEOUT', 30),
                 'base_uri' => env('OPENAI_BASE_URI', 'https://api.openai.com/v1'),
-                'default_model' => env('OPENAI_DEFAULT_MODEL', 'gpt-4'),
+                'default_model' => env('OPENAI_DEFAULT_MODEL', 'gpt-4o'),
                 'default_embedding_model' => env('OPENAI_DEFAULT_EMBEDDING_MODEL', 'text-embedding-3-large'),
                 'default_image_model' => env('OPENAI_DEFAULT_IMAGE_MODEL', 'dall-e-3'),
             ],
@@ -113,7 +113,25 @@ return [
                 'default_embedding_model' => env('HUGGINGFACE_DEFAULT_EMBEDDING_MODEL', 'sentence-transformers/all-mpnet-base-v2'),
             ],
         ],
-        
-        // Espacio para añadir más proveedores
+
+        'anthropic' => [
+            'api_key' => env('ANTHROPIC_API_KEY'),
+            'options' => [
+                'timeout' => env('ANTHROPIC_TIMEOUT', 30),
+                'base_uri' => env('ANTHROPIC_BASE_URI', 'https://api.anthropic.com/v1'),
+                'api_version' => env('ANTHROPIC_API_VERSION', '2023-06-01'),
+                'default_model' => env('ANTHROPIC_DEFAULT_MODEL', 'claude-sonnet-4-20250514'),
+            ],
+        ],
+
+        'gemini' => [
+            'api_key' => env('GEMINI_API_KEY'),
+            'options' => [
+                'timeout' => env('GEMINI_TIMEOUT', 30),
+                'base_uri' => env('GEMINI_BASE_URI', 'https://generativelanguage.googleapis.com/v1beta'),
+                'default_model' => env('GEMINI_DEFAULT_MODEL', 'gemini-2.0-flash'),
+                'default_embedding_model' => env('GEMINI_DEFAULT_EMBEDDING_MODEL', 'text-embedding-004'),
+            ],
+        ],
     ],
 ];

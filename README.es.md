@@ -1,357 +1,175 @@
 # Laravel AI Bridge
 
-Una biblioteca potente y elegante para integrar múltiples proveedores de IA en aplicaciones Laravel a través de una API unificada.
+Una API unificada y testeable para integrar múltiples proveedores de IA en aplicaciones Laravel.
 
-## Introducción
+Soporta **OpenAI**, **Anthropic Claude**, **Google Gemini** y **HuggingFace** — con streaming, conversaciones, salida estructurada, fallback automático, caché y observabilidad integrada.
 
-Laravel AI Bridge proporciona una integración perfecta con los principales proveedores de IA (OpenAI, Anthropic Claude, Google Gemini y Hugging Face) a través de una interfaz consistente al estilo Laravel. La biblioteca abstrae las complejidades de trabajar con diferentes APIs de IA, permitiendo a los desarrolladores centrarse en construir funcionalidades en lugar de gestionar implementaciones de API.
+## ¿Por qué este paquete?
 
-## Características
-
-- **API unificada** para múltiples proveedores de IA
-- **Facades específicas por proveedor** para acceso directo a características especializadas
-- **Caché inteligente** para reducir costos de API
-- **Fallback automático** entre proveedores para mayor fiabilidad
-- **Sintaxis estilo Laravel** con facades, helpers e interfaces fluidas
-- **Integración con Eloquent** mediante traits para modelos con capacidades de IA
-- **Registro completo** y manejo de errores
+- **Una API, cuatro proveedores** — cambia de proveedor con una línea, no una reescritura
+- **Laravel 10, 11 y 12** — el SDK oficial de Laravel AI requiere 12+. Este no.
+- **`AI::fake()` integrado** — testea tu código con IA sin mockear HTTP
+- **Observabilidad por eventos** — cada llamada de IA dispara eventos para logging, métricas o alertas
+- **Logging en base de datos** — rastrea tokens, costos y uso de manera automática
 
 ## Instalación
-
-### Requisitos
-
-- PHP 8.1 o superior
-- Laravel 9.0 o superior
-- Composer
-
-### Vía Composer
 
 ```bash
 composer require edfavieljr/laravel-ai-bridge
 ```
 
-### Publicar Configuración
-
-Después de instalar el paquete, publica el archivo de configuración:
+Publica la configuración:
 
 ```bash
-php artisan vendor:publish --provider="edfavieljr\LaravelAIBridge\AIBridgeServiceProvider" --tag="ai-config"
+php artisan vendor:publish --tag=ai-config
 ```
 
-## Configuración Rápida
+Agrega tu API key al `.env`:
 
-La forma más rápida de comenzar es usando el comando de configuración incluido:
-
-```bash
-php artisan ai:setup
-```
-
-Este comando interactivo te guiará a través de:
-1. Seleccionar tu proveedor de IA preferido
-2. Configurar tus claves API
-3. Establecer modelos predeterminados
-4. Actualizar automáticamente tu archivo `.env`
-
-## Configuración Manual
-
-### Variables de Entorno
-
-Añade las siguientes variables a tu archivo `.env`:
-
-```
-# Proveedor predeterminado
+```env
 AI_PROVIDER=openai
-
-# Configuración de OpenAI
-OPENAI_API_KEY=tu-clave-openai
-OPENAI_ORGANIZATION=tu-id-de-organizacion  # Opcional
-OPENAI_DEFAULT_MODEL=gpt-4
-
-# Configuración de Anthropic
-ANTHROPIC_API_KEY=tu-clave-anthropic
-ANTHROPIC_DEFAULT_MODEL=claude-3-opus-20240229
-
-# Configuración de Google Gemini
-GEMINI_API_KEY=tu-clave-gemini
-GEMINI_PROJECT_ID=tu-id-de-proyecto-gcp  # Opcional, para Vertex AI
-GEMINI_DEFAULT_MODEL=gemini-1.5-pro
-
-# Configuración de Hugging Face
-HUGGINGFACE_API_KEY=tu-clave-huggingface
-HUGGINGFACE_DEFAULT_MODEL=gpt2
+OPENAI_API_KEY=tu-key-aqui
 ```
 
-### Opciones de Configuración
+Listo.
 
-El archivo `config/ai.php` contiene ajustes detallados para:
-
-- Proveedor predeterminado
-- Comportamiento de caché
-- Opciones de fallback entre proveedores
-- Limitación de tasas
-- Registro de actividad
-- Almacenamiento en base de datos para llamadas API
-- Configuración específica por proveedor
-
-## Uso Básico
-
-### Usando la Facade Principal
+## Inicio Rápido
 
 ```php
-use edfavieljr\LaravelAIBridge\Facades\AI;
+use Edfavieljr\LaravelAIBridge\Facades\AI;
 
-// Generar texto con el proveedor predeterminado
-$respuesta = AI::generateText('Explica la computación cuántica en términos simples');
-
-// Analizar sentimiento
-$sentimiento = AI::analyzeSentiment('¡Me encanta absolutamente este producto!');
-
-// Generar embeddings para búsqueda semántica
-$embeddings = AI::generateEmbeddings('Texto para convertir en representación vectorial');
-
-// Clasificar texto en categorías
-$clasificacion = AI::classifyText(
-    'La batería se agota demasiado rápido en este teléfono',
-    ['problema_hardware', 'problema_software', 'problema_bateria', 'experiencia_usuario']
-);
-
-// Extraer entidades
-$entidades = AI::extractEntities('Apple anunció su nuevo iPhone ayer en California');
-```
-
-### Usando Funciones Helper Globales
-
-```php
 // Generar texto
-$explicacion = ai('Explica cómo funciona blockchain en términos simples');
+$response = AI::generateText('Explica la computación cuántica en términos simples');
 
-// Analizar sentimiento
-$sentimiento = ai_sentiment('El servicio al cliente fue terrible y quiero un reembolso');
+// Cambiar proveedor al vuelo
+$response = AI::provider('anthropic')->generateText('Escribe un haiku sobre código');
 
-// Generar embeddings
-$embeddings = ai_embed('Representación vectorial para búsqueda semántica');
-
-// Clasificar texto
-$categoria = ai_classify(
-    'La pantalla se congela después de la actualización',
-    ['problema_hardware', 'bug_software', 'problema_compatibilidad', 'error_usuario']
-);
-
-// Extraer entidades
-$entidades = ai_entities('El CEO de Microsoft Satya Nadella anunció una nueva asociación con OpenAI');
+// Cambiar modelo
+$response = AI::provider('openai')->model('gpt-4o-mini')->generateText('Resume esto');
 ```
 
-## Trabajar con Proveedores Específicos
+## Streaming
 
-### OpenAI
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\OpenAI;
-
-// Acceso directo vía facade específica del proveedor
-$texto = OpenAI::generateText('Escribe un poema sobre el otoño');
-
-// Generar una imagen
-$urlImagen = OpenAI::generateImage('Una ciudad futurista con coches voladores');
-
-// Usando la facade principal con especificación de proveedor
-$texto = AI::provider('openai')
-    ->model('gpt-4')
-    ->generateText('Explica la teoría de la relatividad');
-```
-
-### Anthropic (Claude)
+Streaming de tokens en tiempo real con generadores PHP. Funciona con OpenAI, Anthropic y Gemini.
 
 ```php
-use edfavieljr\LaravelAIBridge\Facades\Anthropic;
-
-// Generar texto con Claude
-$texto = Anthropic::generateText('Escribe un resumen del último informe climático');
-
-// Usando la facade principal con especificación de proveedor
-$texto = AI::provider('anthropic')
-    ->model('claude-3-opus-20240229')
-    ->generateText('Compara y contrasta la computación cuántica y la computación clásica');
-```
-
-### Google Gemini
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\Gemini;
-
-// Generar texto con Gemini
-$texto = Gemini::generateText('Crea un tutorial para principiantes en machine learning');
-
-// Usando la facade principal con especificación de proveedor
-$texto = AI::provider('gemini')
-    ->model('gemini-1.5-pro')
-    ->generateText('Explica cómo funcionan las redes neuronales');
-```
-
-### Hugging Face
-
-```php
-use edfavieljr\LaravelAIBridge\Facades\HuggingFace;
-
-// Generar texto con modelos de HuggingFace
-$texto = HuggingFace::model('gpt2')->generateText('Continúa esta historia: Había una vez');
-
-// Generar embeddings con un modelo específico
-$embeddings = HuggingFace::model('sentence-transformers/all-mpnet-base-v2')
-    ->generateEmbeddings('Vector para búsqueda semántica');
-```
-
-## Integración con Modelos Eloquent
-
-Añade capacidades de IA directamente a tus modelos:
-
-```php
-use Illuminate\Database\Eloquent\Model;
-use edfavieljr\LaravelAIBridge\Traits\HasAICapabilities;
-
-class Producto extends Model
-{
-    use HasAICapabilities;
-    
-    // Tu implementación del modelo...
+foreach (AI::streamText('Escribe una historia sobre un robot') as $chunk) {
+    echo $chunk;
+    ob_flush();
 }
 ```
 
-Luego usa las capacidades de IA en las instancias de tu modelo:
+## Conversaciones
+
+Chat multi-turno con manejo automático de historial.
 
 ```php
-$producto = Producto::find(1);
+$chat = AI::conversation()
+    ->system('Eres un tutor de matemáticas.');
 
-// Generar una descripción de marketing
-$textoMarketing = $producto->completeText(
-    'descripcion',
-    'Reescribe esta descripción de producto para que sea más atractiva: %s'
-);
+$chat->send('¿Qué es el cálculo?');
+$chat->reply('Dame un ejemplo');
 
-// Analizar el sentimiento de una reseña de cliente
-$sentimiento = $producto->analyzeSentimentOf('resena_cliente');
-
-// Categorizar el producto basado en su descripción
-$categoria = $producto->classifyAttribute(
-    'descripcion',
-    ['electronica', 'ropa', 'hogar', 'deportes']
-);
-
-// Generar una imagen para el producto
-$urlImagen = $producto->generateImageFrom('descripcion');
-
-// Resumir la descripción del producto
-$resumen = $producto->summarizeAttribute('descripcion', 100);
-
-// Traducir la descripción del producto
-$traducido = $producto->translateAttribute('descripcion', 'inglés');
+$chat->messages(); // Historial completo disponible
 ```
 
-## Características Avanzadas
+## Salida Estructurada
 
-### Fallback Automático Entre Proveedores
-
-Configura el comportamiento de fallback en `config/ai.php`:
+Fuerza respuestas JSON con validación automática de schema.
 
 ```php
-'fallback' => [
-    'enabled' => true,
-    'providers' => ['openai', 'anthropic', 'gemini', 'huggingface'],
-],
+$result = AI::structured('Extrae info de: Juan Pérez, 30 años, vive en CDMX', [
+    'nombre' => 'string',
+    'edad'   => 'integer',
+    'ciudad' => 'string',
+])->generate();
+
+// ['nombre' => 'Juan Pérez', 'edad' => 30, 'ciudad' => 'CDMX']
 ```
 
-Con el fallback habilitado, si el proveedor principal falla, la biblioteca intenta automáticamente con el siguiente proveedor:
+## Testing con `AI::fake()`
+
+Sin mockear HTTP. Sin API keys en tests.
 
 ```php
-// Intentará primero con OpenAI, luego con otros proveedores si falla
-$resultado = AI::provider('openai')->generateText('Explica la física cuántica');
+AI::fake([
+    'generateText' => '¡Hola mundo!',
+    'analyzeSentiment' => ['score' => 0.9, 'category' => 'positive'],
+]);
+
+// Assertions
+AI::assertCalled('generateText');
+AI::assertCalledWith('generateText', fn ($prompt) => str_contains($prompt, 'hola'));
+AI::assertNotCalled('generateImage');
+AI::assertNothingCalled();
 ```
 
-### Caché Inteligente
-
-Configura el caché en `config/ai.php`:
+## Integración con Eloquent
 
 ```php
-'cache' => [
-    'enabled' => true,
-    'ttl' => 60, // minutos
-],
-```
+use Edfavieljr\LaravelAIBridge\Traits\HasAICapabilities;
 
-Las solicitudes idénticas se almacenarán en caché para reducir los costos de API:
+class Articulo extends Model
+{
+    use HasAICapabilities;
+
+    protected function aiConfig(): array
+    {
+        return [
+            'provider' => 'anthropic',
+            'model' => 'claude-sonnet-4-20250514',
+        ];
+    }
+}
+```
 
 ```php
-// La primera llamada consulta la API
-$resultado1 = AI::generateText('¿Qué es el machine learning?');
+$articulo = Articulo::find(1);
 
-// La segunda llamada idéntica usa el resultado almacenado en caché
-$resultado2 = AI::generateText('¿Qué es el machine learning?');
+$articulo->aiSummarize('cuerpo', 200);
+$articulo->aiTranslate('titulo', 'English');
+$articulo->aiAnalyzeSentiment('contenido');
+$articulo->aiClassify('cuerpo', ['tech', 'ciencia', 'política']);
 ```
 
-### Registro en Base de Datos
+## Eventos
 
-Habilita el almacenamiento en base de datos para rastrear el uso de IA:
+Cada llamada de IA dispara eventos.
 
 ```php
-'storage' => [
-    'enabled' => true,
-    'purge_after_days' => 30,
-],
+use Edfavieljr\LaravelAIBridge\Events\AIRequestCompleted;
+use Edfavieljr\LaravelAIBridge\Events\AIRequestFailed;
+
+Event::listen(AIRequestCompleted::class, function ($event) {
+    // $event->provider, $event->model, $event->prompt, $event->completion, $event->metadata
+});
+
+Event::listen(AIRequestFailed::class, function ($event) {
+    // $event->error — alerta a tu equipo, trackea tasas de fallo, etc.
+});
 ```
 
-Luego publica y ejecuta la migración:
+## Capacidades por Proveedor
 
-```bash
-php artisan vendor:publish --provider="edfavieljr\LaravelAIBridge\AIBridgeServiceProvider" --tag="ai-migrations"
-php artisan migrate
-```
+| Feature | OpenAI | Anthropic | Gemini | HuggingFace |
+|---------|--------|-----------|--------|-------------|
+| Generación de texto | Sí | Sí | Sí | Sí |
+| Streaming | Sí | Sí | Sí | Fallback |
+| Embeddings | Sí | No | Sí | Sí |
+| Generación de imágenes | Sí | No | No | Sí |
+| Análisis de sentimiento | Sí | Sí | Sí | Sí |
+| Clasificación | Sí | Sí | Sí | Sí |
+| Extracción de entidades | Sí | Sí | Sí | Sí |
 
-Consulta los registros:
+## Requisitos
 
-```php
-use edfavieljr\LaravelAIBridge\Models\AICompletion;
-
-// Obtener todas las completaciones
-$completaciones = AICompletion::all();
-
-// Obtener completaciones de un proveedor específico
-$completacionesOpenAI = AICompletion::fromProvider('openai')->get();
-
-// Obtener resumen de uso de tokens
-$resumenUso = AICompletion::getTokenUsageSummary();
-```
-
-## Solución de Problemas
-
-### Problemas Comunes
-
-1. **Fallos de Autenticación de Clave API**
-   - Verifica que tus claves API estén correctamente configuradas en el archivo `.env`
-   - Revisa si hay espacios en blanco o caracteres especiales en tus claves
-
-2. **Limitación de Tasa**
-   - Configura los ajustes de limitación de tasa en `config/ai.php`
-   - Implementa procesamiento basado en colas para aplicaciones de alto volumen
-
-3. **Disponibilidad de Modelos**
-   - Asegúrate de tener acceso a los modelos seleccionados en tus cuentas de proveedor
-   - Algunos modelos requieren permisos o suscripciones específicas
-
-### Depuración
-
-Habilita el registro detallado:
-
-```php
-'logging' => [
-    'enabled' => true,
-    'channel' => 'ai-logs', // Crea este canal en tu config/logging.php
-],
-```
+- PHP 8.1+
+- Laravel 10, 11 o 12
 
 ## Contribuir
 
-¡Las contribuciones son bienvenidas! Por favor, consulta nuestra [Guía de Contribución](CONTRIBUTING.md) para más detalles.
+Ver [CONTRIBUTING.es.md](CONTRIBUTING.es.md).
 
 ## Licencia
 
-Este paquete es software de código abierto bajo la [licencia MIT](LICENSE.md).
+MIT. Ver [LICENSE.md](LICENSE.md).

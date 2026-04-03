@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="AI_PROVIDER" value="openai"/>
+        <env name="AI_CACHE_ENABLED" value="false"/>
+        <env name="AI_LOGGING_ENABLED" value="false"/>
+        <env name="AI_STORAGE_ENABLED" value="false"/>
+        <env name="AI_RATE_LIMITING_ENABLED" value="false"/>
+        <env name="AI_FALLBACK_ENABLED" value="false"/>
+        <env name="OPENAI_API_KEY" value="test-openai-key"/>
+        <env name="ANTHROPIC_API_KEY" value="test-anthropic-key"/>
+        <env name="GEMINI_API_KEY" value="test-gemini-key"/>
+        <env name="HUGGINGFACE_API_KEY" value="test-hf-key"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+    </php>
+</phpunit>
