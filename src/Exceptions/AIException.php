@@ -1,6 +1,8 @@
 <?php
 
-namespace YourVendor\LaravelAIBridge\Exceptions;
+declare(strict_types=1);
+
+namespace Edfavieljr\LaravelAIBridge\Exceptions;
 
 use Exception;
 

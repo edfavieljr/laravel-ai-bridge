@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Edfavieljr\LaravelAIBridge\Contracts;
 
 interface AIServiceInterface
@@ -20,7 +22,7 @@ interface AIServiceInterface
      * @param array $options Additional options (model, etc)
      * @return array The embedding vectors
      */
-    public function generateEmbeddings($input, array $options = []): array;
+    public function generateEmbeddings(string|array $input, array $options = []): array;
     
     /**
      * Analyze sentiment of the provided text.
@@ -60,9 +62,27 @@ interface AIServiceInterface
     public function extractEntities(string $text, array $options = []): array;
     
     /**
+     * Generate text from a multi-turn conversation using native message arrays.
+     *
+     * @param array<int, array{role: string, content: string}> $messages
+     * @param array $options Additional options (model, system, temperature, etc)
+     * @return string The generated text
+     */
+    public function generateChat(array $messages, array $options = []): string;
+
+    /**
+     * Stream text generation, yielding chunks as they arrive.
+     *
+     * @param string $prompt The text prompt
+     * @param array $options Additional options
+     * @return \Generator<int, string, mixed, void>
+     */
+    public function streamText(string $prompt, array $options = []): \Generator;
+
+    /**
      * Get provider-specific client to access advanced features.
      *
      * @return mixed The provider client
      */
-    public function getClient();
+    public function getClient(): mixed;
 }

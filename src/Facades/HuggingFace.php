@@ -1,9 +1,11 @@
 <?php
 
-namespace YourVendor\LaravelAIBridge\Facades;
+declare(strict_types=1);
+
+namespace Edfavieljr\LaravelAIBridge\Facades;
 
 use Illuminate\Support\Facades\Facade;
-use YourVendor\LaravelAIBridge\Services\HuggingFaceService;
+use Edfavieljr\LaravelAIBridge\Services\HuggingFaceService;
 
 /**
  * @method static string generateText(string $prompt, array $options = [])
@@ -13,8 +15,10 @@ use YourVendor\LaravelAIBridge\Services\HuggingFaceService;
  * @method static array extractEntities(string $text, array $options = [])
  * @method static mixed getClient()
  * @method static mixed model(string $model)
- * 
- * @see \YourVendor\LaravelAIBridge\Services\HuggingFaceService
+ *
+ * @see \Edfavieljr\LaravelAIBridge\Services\HuggingFaceService
+ *
+ * @deprecated Use AI::provider('huggingface') instead. Will be removed in v2.0.
  */
 class HuggingFace extends Facade
 {

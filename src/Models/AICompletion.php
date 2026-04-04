@@ -1,6 +1,8 @@
 <?php
 
-namespace YourVendor\LaravelAIBridge\Models;
+declare(strict_types=1);
+
+namespace Edfavieljr\LaravelAIBridge\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
